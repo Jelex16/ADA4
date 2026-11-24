@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AgendaPulse es una Progressive Web App para gestionar actividades y recordatorios personales sin conexión mediante IndexedDB, Service Workers, sincronización automática y notificaciones Push.">
+  <meta name="theme-color" content="#4f46e5">
+  <title>AgendaPulse — Actividades y Recordatorios PWA</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Ir al contenido principal</a>
+
+  <header class="app-header">
+    <div class="header-inner container">
+      <div class="brand">
+        <img src="/icons/icon-192.png" alt="Logo de AgendaPulse" width="44" height="44" class="brand-logo">
+        <div>
+          <h1 class="brand-title">AgendaPulse</h1>
+          <p class="brand-subtitle">Actividades y recordatorios personales offline-first</p>
+        </div>
+      </div>
+
+      <div class="header-controls" role="region" aria-label="Estado de conexión y acciones">
+        <span id="connection-badge" class="status-pill status-online" role="status" aria-live="polite">
+          <span class="dot" aria-hidden="true"></span>
+          <span id="connection-text">En línea</span>
+        </span>
+
+        <button id="sync-btn" type="button" class="btn btn-secondary" title="Sincronizar cambios locales con el servidor">
+          <span id="sync-badge-text">Sincronizado</span>
+        </button>
+
+        <button id="install-btn" type="button" class="btn btn-primary hidden">
+          Instalar app
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content" class="container main-layout">
+    <!-- Summary KPIs -->
+    <section class="stats-grid" aria-label="Resumen de actividades">
+      <article class="stat-card">
+        <span class="stat-label">Total</span>
+        <strong id="stat-total" class="stat-value">0</strong>
+      </article>
+      <article class="stat-card">
+        <span class="stat-label">Pendientes</span>
+        <strong id="stat-pending" class="stat-value">0</strong>
+      </article>
+      <article class="stat-card">
+        <span class="stat-label">Completadas</span>
+        <strong id="stat-completed" class="stat-value">0</strong>
+      </article>
+      <article class="stat-card">
+        <span class="stat-label">Cola de sincronización</span>
+        <strong id="stat-queued" class="stat-value">0</strong>
+      </article>
+    </section>
+
+    <div class="workspace-grid">
+      <!-- Left Column: Activity Form & Notification Center -->
+      <aside class="sidebar-col">
+        <section class="panel" aria-labelledby="form-heading">
+          <div class="panel-header">
+            <h2 id="form-heading">Nueva actividad</h2>
+            <button id="cancel-edit-btn" type="button" class="btn btn-ghost btn-sm hidden">Cancelar edición</button>
+          </div>
+
+          <form id="activity-form" class="activity-form" novalidate>
+            <input type="hidden" id="activity-id" value="">
+
+            <div class="field">
+              <label for="activity-title">Título <span aria-hidden="true">*</span></label>
+              <input id="activity-title" name="title" type="text" required maxlength="140" placeholder="Ej. Entregar reporte de PWA" autocomplete="off">
+            </div>
+
+            <div class="field">
+              <label for="activity-description">Descripción</label>
+              <textarea id="activity-description" name="description" rows="3" maxlength="600" placeholder="Detalles, enlaces o notas adicionales..."></textarea>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="activity-due">Fecha y hora</label>
+                <input id="activity-due" name="dueAt" type="datetime-local">
+              </div>
+
+              <div class="field">
+                <label for="activity-reminder">Recordatorio</label>
+                <select id="activity-reminder" name="reminderMinutes">
+                  <option value="0">A la hora exacta</option>
+                  <option value="5">5 minutos antes</option>
+                  <option value="15" selected>15 minutos antes</option>
+                  <option value="30">30 minutos antes</option>
+                  <option value="60">1 hora antes</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="activity-priority">Prioridad</label>
+                <select id="activity-priority" name="priority">
+                  <option value="alta">Alta</option>
+                  <option value="media" selected>Media</option>
+                  <option value="baja">Baja</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="activity-category">Categoría</label>
+                <select id="activity-category" name="category">
+                  <option value="Personal">Personal</option>
+                  <option value="Estudio">Estudio</option>
+                  <option value="Trabajo">Trabajo</option>
+                  <option value="Salud">Salud</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+            </div>
+
+            <button id="submit-btn" type="submit" class="btn btn-primary btn-full">
+              Registrar actividad
+            </button>
+          </form>
+        </section>
+
+        <!-- Notifications & Push Panel -->
+        <section class="panel" aria-labelledby="notifications-heading">
+          <h2 id="notifications-heading">Notificaciones y Push API</h2>
+          <p class="panel-desc">
+            Recibe avisos locales con la Notifications API y notificaciones en segundo plano mediante Push API y VAPID.
+          </p>
+
+          <div class="notif-status-box">
+            <div>
+              <span class="meta-label">Permiso del navegador:</span>
+              <strong id="notif-permission-label">Verificando...</strong>
+            </div>
+            <div>
+              <span class="meta-label">Suscripción Web Push:</span>
+              <strong id="push-status-label">Inactiva</strong>
+            </div>
+          </div>
+
+          <div class="button-stack">
+            <button id="enable-notif-btn" type="button" class="btn btn-secondary">
+              Activar notificaciones
+            </button>
+            <button id="subscribe-push-btn" type="button" class="btn btn-secondary">
+              Suscribirse a Push Backend
+            </button>
+            <div class="field-row">
+              <button id="test-local-notif-btn" type="button" class="btn btn-ghost btn-sm">
+                Probar aviso local
+              </button>
+              <button id="test-push-notif-btn" type="button" class="btn btn-ghost btn-sm">
+                Probar Push servidor
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Technical Diagnostics Panel -->
+        <section class="panel" aria-labelledby="diag-heading">
+          <h2 id="diag-heading">Estado PWA y almacenamiento</h2>
+          <ul class="diag-list">
+            <li><span>Service Worker:</span> <strong id="diag-sw">Cargando...</strong></li>
+            <li><span>Base local (IndexedDB):</span> <strong id="diag-idb">ada4-pwa-db</strong></li>
+            <li><span>Última sincronización:</span> <strong id="diag-last-sync">Pendiente</strong></li>
+          </ul>
+          <div id="event-log" class="event-log" aria-live="polite" aria-label="Bitácora de sincronización y caché"></div>
+        </section>
+      </aside>
+
+      <!-- Right Column: Search, Filters, and Activities List -->
+      <section class="content-col panel" aria-labelledby="list-heading">
+        <div class="list-toolbar">
+          <h2 id="list-heading">Mis actividades</h2>
+          <div class="toolbar-filters">
+            <div class="field compact-field">
+              <label for="search-input" class="sr-only">Buscar actividades</label>
+              <input id="search-input" type="search" placeholder="Buscar por título o nota...">
+            </div>
+
+            <div class="field compact-field">
+              <label for="filter-status" class="sr-only">Filtrar por estado</label>
+              <select id="filter-status">
+                <option value="all">Todas</option>
+                <option value="pending">Pendientes</option>
+                <option value="completed">Completadas</option>
+              </select>
+            </div>
+
+            <div class="field compact-field">
+              <label for="filter-priority" class="sr-only">Filtrar por prioridad</label>
+              <select id="filter-priority">
+                <option value="all">Toda prioridad</option>
+                <option value="alta">Alta</option>
+                <option value="media">Media</option>
+                <option value="baja">Baja</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div id="activities-list" class="activities-list" role="list"></div>
+        <div id="empty-state" class="empty-state hidden">
+          <p class="empty-title">No hay actividades para mostrar</p>
+          <p class="empty-copy">Registra una nueva actividad en el formulario. Incluso sin conexión se guardará en IndexedDB y se sincronizará al volver en línea.</p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

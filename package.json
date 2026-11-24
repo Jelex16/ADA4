@@ -1,0 +1,20 @@
+{
+  "name": "agendapulse-pwa",
+  "version": "1.0.0",
+  "description": "PWA para administrar actividades y recordatorios personales con CRUD, IndexedDB, Service Worker, Background Sync y Push API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "web-push": "^3.6.7"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
