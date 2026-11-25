@@ -8,7 +8,8 @@ Progressive Web App (PWA) **offline-first** para administrar actividades y recor
 - **Almacenamiento local con IndexedDB (`ada4-pwa-db`):**
   - Object Store `activities`: conserva todas las actividades localmente.
   - Object Store `syncQueue`: cola persistente de mutaciones realizadas sin conexión (`create`, `update`, `delete`).
-  - Object Store `meta`: fecha de última sincronización y metadatos.
+  - Object Store `meta`: fecha de última sincronización y metadatos y cosas
+  .
 - **Estrategias de caché con Service Worker (`public/sw.js`):**
   - **Precache del App Shell** en evento `install`.
   - **Cache First con revalidación** para recursos estáticos (`styles.css`, módulos JS, iconos, `manifest.webmanifest`).
