@@ -18,6 +18,7 @@ Progressive Web App (PWA) **offline-first** para administrar actividades y recor
   - Registro en Background Sync (`sync-activities`) dentro del Service Worker.
   - Escucha automática del evento `online` del navegador y botón manual de sincronización.
   - Endpoint `POST /api/sync` en el servidor que procesa las operaciones pendientes de forma idempotente.
+  - moviendo datos
 - **Notificaciones y Web Push API:**
   - Notificaciones locales con la **Notifications API** (`Notification.requestPermission()` + `ServiceWorkerRegistration.showNotification()`) y recordatorios programados antes de la fecha límite.
   - Ampliación con **Push API + backend VAPID** (`web-push`): generación automática de llaves VAPID, suscripción (`POST /api/push/subscribe`), envío manual de prueba (`POST /api/push/test`) y worker en servidor que envía Push al vencer recordatorios.
